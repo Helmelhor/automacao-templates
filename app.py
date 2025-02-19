@@ -4,9 +4,12 @@ from pptx.util import Pt
 import requests
 from google import genai
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Configuração do cliente Gemini
-client = genai.Client(api_key="AIzaSyAFdxMkokQUfbUvFbdxV30NDd3x9qR2Rk0")
+client = genai.Client(api_key = os.getenv('API_KEY'))
 
 # Função para gerar resumo usando a API do Gemini
 def gerar_resumo(livro):
