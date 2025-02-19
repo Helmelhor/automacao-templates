@@ -16,6 +16,15 @@ def gerar_resumo(livro):
     )
     return response.text
 
+# Função para gerar uma frase motivacional com base nos temas dos livros
+def gerar_frase_motivacional(livros):
+    temas = ", ".join(livros)  # Combina os títulos dos livros em uma única string
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=f"Crie apenas uma frase curta e motivacional de no máximo 100 caracteres que incentive a leitura (não quero sugestões, apenas retorne a frase sem mais nada além disso. não precisa deixar em negrito, então não coloque asteriscos '*'), baseada nos seguintes livros: {temas}",
+    )
+    return response.text
+
 # Função para baixar uma imagem a partir de uma URL
 def baixar_imagem(url, caminho_local):
     resposta = requests.get(url)
@@ -45,6 +54,9 @@ for i, url in enumerate(imagens):
 # Gerar resumos para os livros
 resumos = [gerar_resumo(livro) for livro in livros]
 
+# Gerar uma frase motivacional com base nos temas dos livros
+frase_motivacional = gerar_frase_motivacional(livros)
+
 # Caminho para o arquivo PowerPoint existente
 pptx_path = 'minha_apresentacao.pptx'
 
@@ -73,11 +85,12 @@ def substituir_imagem_por_nome(slide, nome_placeholder, nova_imagem):
             sp = shape._element
             sp.getparent().remove(sp)
 
-# Atualizar o PowerPoint com os resumos e imagens
+# Atualizar o PowerPoint com os resumos, imagens e frase motivacional
 for slide in prs.slides:
     substituir_texto(slide, 'texto1', resumos[0])
     substituir_texto(slide, 'texto2', resumos[1])
     substituir_texto(slide, 'texto3', resumos[2])
+    substituir_texto(slide, 'texto4', frase_motivacional)  # Substituir o placeholder "texto4"
     substituir_imagem_por_nome(slide, 'imagem1', caminhos_imagens[0])
     substituir_imagem_por_nome(slide, 'imagem2', caminhos_imagens[1])
     substituir_imagem_por_nome(slide, 'imagem3', caminhos_imagens[2])
