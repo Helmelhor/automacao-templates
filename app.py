@@ -2,7 +2,7 @@ import pandas as pd
 from pptx import Presentation
 from pptx.util import Pt
 import requests
-from google import genai
+import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 import streamlit as st
@@ -10,7 +10,7 @@ from io import BytesIO
 
 load_dotenv()
 
-client = genai.Client(api_key=os.getenv('API_KEY'))
+client = genai.configure(api_key=os.getenv('API_KEY'))
 
 # Função para gerar resumo usando a API do Gemini
 def gerar_resumo(livro):
