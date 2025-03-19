@@ -39,7 +39,7 @@ def baixar_imagem(url, caminho_local):
 
 def main():
     st.image("imagens\header books.jpg")
-    st.title("Gerador de Apresentações de Livros")
+    st.title("Gerador de Template da biblioteca corporativa")
 
     # Inputs para os nomes dos livros
     st.subheader("Digite os nomes dos livros")
