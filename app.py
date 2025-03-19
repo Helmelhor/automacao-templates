@@ -7,9 +7,6 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import streamlit as st
 from io import BytesIO
-from PIL import Image
-import zipfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -28,7 +25,6 @@ def gerar_resumo(livro):
         response = model.generate_content(
             f"Faça um resumo de no máximo 445 caracteres sobre o livro: {livro}"
         )
-        st.write(f"Resposta da API para '{livro}': {response.text}")  # Log da resposta
         return response.text
     except Exception as e:
         st.error(f"Erro ao gerar resumo: {e}")
@@ -41,21 +37,10 @@ def gerar_frase_motivacional(livros):
         response = model.generate_content(
             f"Crie apenas uma frase curta e motivacional de no máximo 100 caracteres que incentive a leitura (não quero sugestões, apenas retorne a frase sem mais nada além disso. não precisa deixar em negrito, então não coloque asteriscos '*'), baseada nos seguintes livros: {temas}"
         )
-        st.write(f"Resposta da API para frase motivacional: {response.text}")  # Log da resposta
         return response.text
     except Exception as e:
         st.error(f"Erro ao gerar frase motivacional: {e}")
         return ""
-
-# Função para gerar resumo com timeout
-def gerar_resumo_com_timeout(livro):
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(gerar_resumo, livro)
-        try:
-            return future.result(timeout=10)  # Timeout de 10 segundos
-        except Exception as e:
-            st.error(f"Timeout ao gerar resumo para '{livro}': {e}")
-            return ""
 
 # Função para baixar imagens a partir de URLs
 def baixar_imagem(url, caminho_local):
@@ -69,21 +54,6 @@ def baixar_imagem(url, caminho_local):
     except Exception as e:
         st.error(f"Erro ao baixar a imagem: {e}")
         raise
-
-# Função para converter slides do PowerPoint para JPEG
-def pptx_para_jpeg(pptx_path, output_folder):
-    try:
-        prs = Presentation(pptx_path)
-        imagens = []
-        for i, slide in enumerate(prs.slides):
-            slide_image_path = os.path.join(output_folder, f"slide_{i + 1}.jpg")
-            slide_image = Image.new("RGB", (1280, 720), (255, 255, 255))  # Tamanho padrão para slides
-            slide_image.save(slide_image_path)
-            imagens.append(slide_image_path)
-        return imagens
-    except Exception as e:
-        st.error(f"Erro ao converter slides para JPEG: {e}")
-        return []
 
 def main():
     st.title("Gerador de Apresentações de Livros")
@@ -117,11 +87,8 @@ def main():
                 return
 
         # Gerar resumos e frase motivacional
-        with st.spinner("Gerando resumos..."):
-            resumos = [gerar_resumo_com_timeout(livro) for livro in livros]
-
-        with st.spinner("Gerando frase motivacional..."):
-            frase_motivacional = gerar_frase_motivacional(livros)
+        resumos = [gerar_resumo(livro) for livro in livros]
+        frase_motivacional = gerar_frase_motivacional(livros)
 
         # Exibir prévia dos resumos e imagens
         st.subheader("Prévia do Template")
@@ -199,47 +166,19 @@ def main():
                 st.error(f"Erro ao salvar a apresentação modificada: {e}")
                 return
 
-            # Converter a apresentação para JPEG
-            output_folder = "slides_jpeg"
-            os.makedirs(output_folder, exist_ok=True)
-            imagens = pptx_para_jpeg(output_pptx_path, output_folder)
+            # Disponibilizar o download do PPT
+            with open(output_pptx_path, "rb") as file:
+                btn = st.download_button(
+                    label="Baixar Apresentação (PPT)",
+                    data=file,
+                    file_name="apresentacao_modificada.pptx",
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                )
 
-            # Criar um arquivo ZIP com as imagens
-            zip_path = "apresentacao_modificada.zip"
-            try:
-                with zipfile.ZipFile(zip_path, "w") as zipf:
-                    for imagem in imagens:
-                        zipf.write(imagem, os.path.basename(imagem))
-            except Exception as e:
-                st.error(f"Erro ao criar o arquivo ZIP: {e}")
-                return
-
-            # Disponibilizar o download do ZIP
-            try:
-                with open(zip_path, "rb") as file:
-                    btn = st.download_button(
-                        label="Baixar Apresentação em JPEG (ZIP)",
-                        data=file,
-                        file_name="apresentacao_modificada.zip",
-                        mime="application/zip"
-                    )
-            except Exception as e:
-                st.error(f"Erro ao disponibilizar o download: {e}")
-                return
-
-            # Limpar as imagens baixadas e os slides JPEG
+            # Limpar as imagens baixadas
             for caminho in caminhos_imagens:
                 if os.path.exists(caminho):
                     os.remove(caminho)
-            for imagem in imagens:
-                if os.path.exists(imagem):
-                    os.remove(imagem)
-            if os.path.exists(output_folder):
-                os.rmdir(output_folder)
-            if os.path.exists(output_pptx_path):
-                os.remove(output_pptx_path)
-            if os.path.exists(zip_path):
-                os.remove(zip_path)
 
             st.success("Apresentação gerada com sucesso!")
 
