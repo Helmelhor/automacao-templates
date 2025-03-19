@@ -9,6 +9,7 @@ import streamlit as st
 from io import BytesIO
 from PIL import Image
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -23,10 +24,11 @@ except Exception as e:
 # Função para gerar resumo usando a API do Gemini
 def gerar_resumo(livro):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash-lite')
         response = model.generate_content(
             f"Faça um resumo de no máximo 445 caracteres sobre o livro: {livro}"
         )
+        st.write(f"Resposta da API para '{livro}': {response.text}")  # Log da resposta
         return response.text
     except Exception as e:
         st.error(f"Erro ao gerar resumo: {e}")
@@ -35,19 +37,30 @@ def gerar_resumo(livro):
 def gerar_frase_motivacional(livros):
     try:
         temas = ", ".join(livros)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash-lite')
         response = model.generate_content(
             f"Crie apenas uma frase curta e motivacional de no máximo 100 caracteres que incentive a leitura (não quero sugestões, apenas retorne a frase sem mais nada além disso. não precisa deixar em negrito, então não coloque asteriscos '*'), baseada nos seguintes livros: {temas}"
         )
+        st.write(f"Resposta da API para frase motivacional: {response.text}")  # Log da resposta
         return response.text
     except Exception as e:
         st.error(f"Erro ao gerar frase motivacional: {e}")
         return ""
 
+# Função para gerar resumo com timeout
+def gerar_resumo_com_timeout(livro):
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(gerar_resumo, livro)
+        try:
+            return future.result(timeout=10)  # Timeout de 10 segundos
+        except Exception as e:
+            st.error(f"Timeout ao gerar resumo para '{livro}': {e}")
+            return ""
+
 # Função para baixar imagens a partir de URLs
 def baixar_imagem(url, caminho_local):
     try:
-        resposta = requests.get(url)
+        resposta = requests.get(url, timeout=10)  # Timeout de 10 segundos
         if resposta.status_code == 200:
             with open(caminho_local, "wb") as arquivo:
                 arquivo.write(resposta.content)
@@ -104,8 +117,11 @@ def main():
                 return
 
         # Gerar resumos e frase motivacional
-        resumos = [gerar_resumo(livro) for livro in livros]
-        frase_motivacional = gerar_frase_motivacional(livros)
+        with st.spinner("Gerando resumos..."):
+            resumos = [gerar_resumo_com_timeout(livro) for livro in livros]
+
+        with st.spinner("Gerando frase motivacional..."):
+            frase_motivacional = gerar_frase_motivacional(livros)
 
         # Exibir prévia dos resumos e imagens
         st.subheader("Prévia do Template")
