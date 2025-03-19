@@ -23,9 +23,9 @@ except Exception as e:
 # Função para gerar resumo usando a API do Gemini
 def gerar_resumo(livro):
     try:
-        response = genai.generate_text(
-            model="gemini-2.0-flash",
-            contents=f"Faça um resumo de no máximo 445 caracteres sobre o livro: {livro}",
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(
+            f"Faça um resumo de no máximo 445 caracteres sobre o livro: {livro}"
         )
         return response.text
     except Exception as e:
@@ -35,9 +35,9 @@ def gerar_resumo(livro):
 def gerar_frase_motivacional(livros):
     try:
         temas = ", ".join(livros)
-        response = genai.generate_text(
-            model="gemini-2.0-flash",
-            contents=f"Crie apenas uma frase curta e motivacional de no máximo 100 caracteres que incentive a leitura (não quero sugestões, apenas retorne a frase sem mais nada além disso. não precisa deixar em negrito, então não coloque asteriscos '*'), baseada nos seguintes livros: {temas}",
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(
+            f"Crie apenas uma frase curta e motivacional de no máximo 100 caracteres que incentive a leitura (não quero sugestões, apenas retorne a frase sem mais nada além disso. não precisa deixar em negrito, então não coloque asteriscos '*'), baseada nos seguintes livros: {temas}"
         )
         return response.text
     except Exception as e:
