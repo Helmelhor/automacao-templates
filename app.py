@@ -1,45 +1,79 @@
+import os
 import pandas as pd
 from pptx import Presentation
 from pptx.util import Pt
 import requests
 import google.generativeai as genai
-import os
 from dotenv import load_dotenv
 import streamlit as st
 from io import BytesIO
+from PIL import Image
+import zipfile
 
+# Carregar variáveis de ambiente
 load_dotenv()
 
-client = genai.configure(api_key=os.getenv('API_KEY'))
+# Configurar o cliente do Gemini
+try:
+    genai.configure(api_key=os.getenv('API_KEY'))
+except Exception as e:
+    st.error(f"Erro ao configurar a API do Gemini: {e}")
+    st.stop()
 
 # Função para gerar resumo usando a API do Gemini
 def gerar_resumo(livro):
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=f"Faça um resumo de no máximo 445 caracteres sobre o livro: {livro}",
-    )
-    return response.text
+    try:
+        response = genai.generate_text(
+            model="gemini-2.0-flash",
+            contents=f"Faça um resumo de no máximo 445 caracteres sobre o livro: {livro}",
+        )
+        return response.text
+    except Exception as e:
+        st.error(f"Erro ao gerar resumo: {e}")
+        return ""
 
 def gerar_frase_motivacional(livros):
-    temas = ", ".join(livros)
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=f"Crie apenas uma frase curta e motivacional de no máximo 100 caracteres que incentive a leitura (não quero sugestões, apenas retorne a frase sem mais nada além disso. não precisa deixar em negrito, então não coloque asteriscos '*'), baseada nos seguintes livros: {temas}",
-    )
-    return response.text
+    try:
+        temas = ", ".join(livros)
+        response = genai.generate_text(
+            model="gemini-2.0-flash",
+            contents=f"Crie apenas uma frase curta e motivacional de no máximo 100 caracteres que incentive a leitura (não quero sugestões, apenas retorne a frase sem mais nada além disso. não precisa deixar em negrito, então não coloque asteriscos '*'), baseada nos seguintes livros: {temas}",
+        )
+        return response.text
+    except Exception as e:
+        st.error(f"Erro ao gerar frase motivacional: {e}")
+        return ""
 
 # Função para baixar imagens a partir de URLs
 def baixar_imagem(url, caminho_local):
-    resposta = requests.get(url)
-    if resposta.status_code == 200:
-        with open(caminho_local, "wb") as arquivo:
-            arquivo.write(resposta.content)
-    else:
-        raise Exception(f"Erro ao baixar a imagem: {url}")
+    try:
+        resposta = requests.get(url)
+        if resposta.status_code == 200:
+            with open(caminho_local, "wb") as arquivo:
+                arquivo.write(resposta.content)
+        else:
+            raise Exception(f"Erro ao baixar a imagem: {url}")
+    except Exception as e:
+        st.error(f"Erro ao baixar a imagem: {e}")
+        raise
+
+# Função para converter slides do PowerPoint para JPEG
+def pptx_para_jpeg(pptx_path, output_folder):
+    try:
+        prs = Presentation(pptx_path)
+        imagens = []
+        for i, slide in enumerate(prs.slides):
+            slide_image_path = os.path.join(output_folder, f"slide_{i + 1}.jpg")
+            slide_image = Image.new("RGB", (1280, 720), (255, 255, 255))  # Tamanho padrão para slides
+            slide_image.save(slide_image_path)
+            imagens.append(slide_image_path)
+        return imagens
+    except Exception as e:
+        st.error(f"Erro ao converter slides para JPEG: {e}")
+        return []
 
 def main():
-    st.image("imagens\headerbooks.jpg")
-    st.title("Gerador de Template da biblioteca corporativa")
+    st.title("Gerador de Apresentações de Livros")
 
     # Inputs para os nomes dos livros
     st.subheader("Digite os nomes dos livros")
@@ -85,7 +119,10 @@ def main():
         st.write("**Imagens dos Livros:**")
         cols = st.columns(3)
         for i, caminho in enumerate(caminhos_imagens):
-            cols[i].image(caminho, caption=f"Imagem {i + 1}", use_column_width=True)
+            try:
+                cols[i].image(caminho, caption=f"Imagem {i + 1}", use_column_width=True)
+            except Exception as e:
+                st.error(f"Erro ao exibir a imagem {i + 1}: {e}")
 
         # Exibir frase motivacional
         st.write("**Frase Motivacional:**")
@@ -93,9 +130,18 @@ def main():
 
         # Botão para gerar a apresentação final
         if st.button("Gerar Apresentação"):
-            # Carregar o template da apresentação
+            # Verificar se o template da apresentação existe
             pptx_path = 'minha_apresentacao.pptx'
-            prs = Presentation(pptx_path)
+            if not os.path.exists(pptx_path):
+                st.error(f"Erro: O arquivo {pptx_path} não foi encontrado.")
+                return
+
+            # Carregar o template da apresentação
+            try:
+                prs = Presentation(pptx_path)
+            except Exception as e:
+                st.error(f"Erro ao carregar o template da apresentação: {e}")
+                return
 
             # Função para substituir texto nos placeholders
             def substituir_texto(slide, antigo_texto, novo_texto, tamanho_fonte=Pt(14)):
@@ -130,21 +176,54 @@ def main():
                 substituir_imagem_por_nome(slide, 'imagem3', caminhos_imagens[2])
 
             # Salvar a apresentação modificada
-            output_path = 'apresentacao_modificada.pptx'
-            prs.save(output_path)
+            output_pptx_path = 'apresentacao_modificada.pptx'
+            try:
+                prs.save(output_pptx_path)
+            except Exception as e:
+                st.error(f"Erro ao salvar a apresentação modificada: {e}")
+                return
 
-            # Disponibilizar o download da apresentação
-            with open(output_path, "rb") as file:
-                btn = st.download_button(
-                    label="Baixar Apresentação Modificada",
-                    data=file,
-                    file_name="apresentacao_modificada.pptx",
-                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                )
+            # Converter a apresentação para JPEG
+            output_folder = "slides_jpeg"
+            os.makedirs(output_folder, exist_ok=True)
+            imagens = pptx_para_jpeg(output_pptx_path, output_folder)
 
-            # Limpar as imagens baixadas
+            # Criar um arquivo ZIP com as imagens
+            zip_path = "apresentacao_modificada.zip"
+            try:
+                with zipfile.ZipFile(zip_path, "w") as zipf:
+                    for imagem in imagens:
+                        zipf.write(imagem, os.path.basename(imagem))
+            except Exception as e:
+                st.error(f"Erro ao criar o arquivo ZIP: {e}")
+                return
+
+            # Disponibilizar o download do ZIP
+            try:
+                with open(zip_path, "rb") as file:
+                    btn = st.download_button(
+                        label="Baixar Apresentação em JPEG (ZIP)",
+                        data=file,
+                        file_name="apresentacao_modificada.zip",
+                        mime="application/zip"
+                    )
+            except Exception as e:
+                st.error(f"Erro ao disponibilizar o download: {e}")
+                return
+
+            # Limpar as imagens baixadas e os slides JPEG
             for caminho in caminhos_imagens:
-                os.remove(caminho)
+                if os.path.exists(caminho):
+                    os.remove(caminho)
+            for imagem in imagens:
+                if os.path.exists(imagem):
+                    os.remove(imagem)
+            if os.path.exists(output_folder):
+                os.rmdir(output_folder)
+            if os.path.exists(output_pptx_path):
+                os.remove(output_pptx_path)
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
 
             st.success("Apresentação gerada com sucesso!")
 
