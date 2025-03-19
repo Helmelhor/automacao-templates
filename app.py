@@ -73,6 +73,7 @@ def pptx_para_jpeg(pptx_path, output_folder):
         return []
 
 def main():
+    st.image("imagens\headerbooks.jpg")
     st.title("Gerador de Apresentações de Livros")
 
     # Inputs para os nomes dos livros
