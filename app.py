@@ -2,7 +2,7 @@ import pandas as pd
 from pptx import Presentation
 from pptx.util import Pt
 import requests
-import google.generativeai as genai
+from google import genai
 import os
 from dotenv import load_dotenv
 import streamlit as st
