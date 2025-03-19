@@ -38,7 +38,7 @@ def baixar_imagem(url, caminho_local):
         raise Exception(f"Erro ao baixar a imagem: {url}")
 
 def main():
-    st.image("imagens\header books.jpg")
+    st.image("imagens\headerbooks.jpg")
     st.title("Gerador de Template da biblioteca corporativa")
 
     # Inputs para os nomes dos livros
