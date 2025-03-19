@@ -10,7 +10,7 @@ from io import BytesIO
 
 load_dotenv()
 
-client = genai(api_key=os.getenv('API_KEY'))
+client = genai.Client(api_key=os.getenv('API_KEY'))
 
 # Função para gerar resumo usando a API do Gemini
 def gerar_resumo(livro):
