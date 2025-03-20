@@ -7,3 +7,9 @@ Pillow==10.1.0
 pandas==2.1.4
 env
 openpyxl
+google.generativeai
+pptx.util
+pptx
+generativeai
+genai
+google
