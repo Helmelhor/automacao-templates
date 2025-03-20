@@ -114,6 +114,13 @@ def main():
     # Caminho do arquivo Excel
     caminho_excel = "livros.xlsx"  # Substitua pelo caminho do seu arquivo Excel
 
+    # Verificar se o arquivo Excel existe
+    if not os.path.exists(caminho_excel):
+        st.warning("Arquivo Excel não encontrado. Criando um novo arquivo...")
+        df = pd.DataFrame(columns=["livros", "autores", "livros usados"])
+        df.to_excel(caminho_excel, sheet_name='controle', index=False)
+        st.success(f"Arquivo Excel criado: {caminho_excel}")
+
     # Sidebar para navegação
     st.sidebar.title("Navegação")
     aba_selecionada = st.sidebar.radio("Selecione a aba", ["Apresentação", "Planilha"])
@@ -131,18 +138,42 @@ def main():
     # Aba de Apresentação
     st.header("Gerar Apresentação")
 
-    # Ler e atualizar o Excel
-    livros_usados = pd.read_excel(caminho_excel, sheet_name='controle')
-    livros_usados = livros_usados[livros_usados['livros usados'] == "Sim"]['livros'].tolist()
+    # Opção para escolher entre digitar manualmente ou selecionar do acervo
+    metodo_selecao = st.radio(
+        "Como deseja selecionar os livros?",
+        ["Selecionar do acervo", "Digitar manualmente"]
+    )
 
-    livros_selecionados, df = ler_e_atualizar_excel(caminho_excel, livros_usados)
+    livros_selecionados = None
 
-    if livros_selecionados is None:
-        return
+    if metodo_selecao == "Selecionar do acervo":
+        # Ler e atualizar o Excel
+        livros_usados = pd.read_excel(caminho_excel, sheet_name='controle')
+        livros_usados = livros_usados[livros_usados['livros usados'] == "Sim"]['livros'].tolist()
 
-    # Exibir os livros selecionados
-    st.subheader("Livros Selecionados para a Apresentação")
-    st.write(livros_selecionados[['livros', 'autores']])
+        livros_selecionados, df = ler_e_atualizar_excel(caminho_excel, livros_usados)
+
+        if livros_selecionados is None:
+            return
+
+        # Exibir os livros selecionados
+        st.subheader("Livros Selecionados para a Apresentação")
+        st.write(livros_selecionados[['livros', 'autores']])
+
+    elif metodo_selecao == "Digitar manualmente":
+        st.subheader("Digite os nomes dos livros")
+        livro1 = st.text_input("Nome do Livro 1")
+        livro2 = st.text_input("Nome do Livro 2")
+        livro3 = st.text_input("Nome do Livro 3")
+
+        if livro1 and livro2 and livro3:
+            livros_selecionados = pd.DataFrame({
+                'livros': [livro1, livro2, livro3],
+                'autores': ['Autor Desconhecido'] * 3  # Placeholder para autores
+            })
+        else:
+            st.warning("Por favor, insira os nomes dos três livros.")
+            return
 
     # Inputs para os links das imagens
     st.subheader("Insira os links das imagens dos livros")
@@ -151,7 +182,7 @@ def main():
     link_imagem3 = st.text_input("Link da Imagem do Livro 3")
 
     # Verifica se todos os campos foram preenchidos
-    if link_imagem1 and link_imagem2 and link_imagem3:
+    if livros_selecionados is not None and link_imagem1 and link_imagem2 and link_imagem3:
         links_imagens = [link_imagem1, link_imagem2, link_imagem3]
 
         # Baixar as imagens e salvar localmente
