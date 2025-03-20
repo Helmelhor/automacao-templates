@@ -7,6 +7,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import streamlit as st
 from io import BytesIO
+from PIL import Image
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -55,14 +56,93 @@ def baixar_imagem(url, caminho_local):
         st.error(f"Erro ao baixar a imagem: {e}")
         raise
 
+# Função para salvar slides como imagens
+def salvar_slides_como_imagens(pptx_path, output_folder="slides_imagens"):
+    try:
+        # Criar a pasta de saída se não existir
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+        # Carregar a apresentação
+        prs = Presentation(pptx_path)
+
+        # Iterar sobre os slides e salvar como imagens
+        for i, slide in enumerate(prs.slides):
+            slide_image_path = os.path.join(output_folder, f"slide_{i + 1}.png")
+            slide_image = slide.export()  # Exporta o slide como imagem
+            Image.open(slide_image).save(slide_image_path)  # Salva a imagem usando Pillow
+
+        st.success(f"Slides salvos como imagens na pasta: {output_folder}")
+    except Exception as e:
+        st.error(f"Erro ao salvar slides como imagens: {e}")
+
+# Função para ler e atualizar o Excel
+def ler_e_atualizar_excel(caminho_excel, livros_usados):
+    try:
+        # Ler o arquivo Excel
+        df = pd.read_excel(caminho_excel, sheet_name='controle')
+
+        # Verificar se as colunas necessárias existem
+        if 'livros' not in df.columns or 'autores' not in df.columns or 'livros usados' not in df.columns:
+            st.error("O arquivo Excel não contém as colunas necessárias: 'livros', 'autores', 'livros usados'.")
+            return None, None
+
+        # Filtrar livros não usados
+        livros_nao_usados = df[~df['livros'].isin(livros_usados)]
+
+        # Selecionar os primeiros 3 livros não usados
+        livros_selecionados = livros_nao_usados.head(3)
+
+        if len(livros_selecionados) < 3:
+            st.warning("Não há livros suficientes não utilizados para criar a apresentação.")
+            return None, None
+
+        # Atualizar a coluna "livros usados" no DataFrame
+        df.loc[df['livros'].isin(livros_selecionados['livros']), 'livros usados'] = "Sim"
+
+        # Salvar o DataFrame atualizado de volta no Excel
+        df.to_excel(caminho_excel, sheet_name='controle', index=False)
+
+        return livros_selecionados, df
+    except Exception as e:
+        st.error(f"Erro ao ler/atualizar o Excel: {e}")
+        return None, None
+
 def main():
     st.title("Gerador de Apresentações de Livros")
 
-    # Inputs para os nomes dos livros
-    st.subheader("Digite os nomes dos livros")
-    livro1 = st.text_input("Nome do Livro 1")
-    livro2 = st.text_input("Nome do Livro 2")
-    livro3 = st.text_input("Nome do Livro 3")
+    # Caminho do arquivo Excel
+    caminho_excel = "livros.xlsx"  # Substitua pelo caminho do seu arquivo Excel
+
+    # Sidebar para navegação
+    st.sidebar.title("Navegação")
+    aba_selecionada = st.sidebar.radio("Selecione a aba", ["Apresentação", "Planilha"])
+
+    if aba_selecionada == "Planilha":
+        st.header("Planilha de Livros")
+        try:
+            # Ler e exibir a planilha
+            df = pd.read_excel(caminho_excel, sheet_name='controle')
+            st.write(df)
+        except Exception as e:
+            st.error(f"Erro ao carregar a planilha: {e}")
+        return
+
+    # Aba de Apresentação
+    st.header("Gerar Apresentação")
+
+    # Ler e atualizar o Excel
+    livros_usados = pd.read_excel(caminho_excel, sheet_name='controle')
+    livros_usados = livros_usados[livros_usados['livros usados'] == "Sim"]['livros'].tolist()
+
+    livros_selecionados, df = ler_e_atualizar_excel(caminho_excel, livros_usados)
+
+    if livros_selecionados is None:
+        return
+
+    # Exibir os livros selecionados
+    st.subheader("Livros Selecionados para a Apresentação")
+    st.write(livros_selecionados[['livros', 'autores']])
 
     # Inputs para os links das imagens
     st.subheader("Insira os links das imagens dos livros")
@@ -71,8 +151,7 @@ def main():
     link_imagem3 = st.text_input("Link da Imagem do Livro 3")
 
     # Verifica se todos os campos foram preenchidos
-    if livro1 and livro2 and livro3 and link_imagem1 and link_imagem2 and link_imagem3:
-        livros = [livro1, livro2, livro3]
+    if link_imagem1 and link_imagem2 and link_imagem3:
         links_imagens = [link_imagem1, link_imagem2, link_imagem3]
 
         # Baixar as imagens e salvar localmente
@@ -87,8 +166,8 @@ def main():
                 return
 
         # Gerar resumos e frase motivacional
-        resumos = [gerar_resumo(livro) for livro in livros]
-        frase_motivacional = gerar_frase_motivacional(livros)
+        resumos = [gerar_resumo(livro) for livro in livros_selecionados['livros']]
+        frase_motivacional = gerar_frase_motivacional(livros_selecionados['livros'].tolist())
 
         # Exibir prévia dos resumos e imagens
         st.subheader("Prévia do Template")
@@ -165,6 +244,9 @@ def main():
             except Exception as e:
                 st.error(f"Erro ao salvar a apresentação modificada: {e}")
                 return
+
+            # Converter slides em imagens
+            salvar_slides_como_imagens(output_pptx_path)
 
             # Disponibilizar o download do PPT
             with open(output_pptx_path, "rb") as file:
