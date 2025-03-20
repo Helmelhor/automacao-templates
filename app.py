@@ -77,7 +77,7 @@ def salvar_slides_como_imagens(pptx_path, output_folder="slides_imagens"):
         st.error(f"Erro ao salvar slides como imagens: {e}")
 
 # Função para ler e atualizar o Excel
-def ler_e_atualizar_excel(caminho_excel, livros_usados):
+def ler_e_atualizar_excel(caminho_excel):
     try:
         # Ler o arquivo Excel
         df = pd.read_excel(caminho_excel, sheet_name='controle')
@@ -88,14 +88,16 @@ def ler_e_atualizar_excel(caminho_excel, livros_usados):
             return None, None
 
         # Filtrar livros não usados
-        livros_nao_usados = df[~df['livros'].isin(livros_usados)]
+        livros_nao_usados = df[df['livros usados'] != "Sim"]
 
         # Selecionar os primeiros 3 livros não usados
         livros_selecionados = livros_nao_usados.head(3)
 
+        # Se não houver livros não usados suficientes, selecionar livros usados
         if len(livros_selecionados) < 3:
-            st.warning("Não há livros suficientes não utilizados para criar a apresentação.")
-            return None, None
+            st.warning("Não há livros suficientes não utilizados. Selecionando livros já usados...")
+            livros_usados = df[df['livros usados'] == "Sim"]
+            livros_selecionados = pd.concat([livros_selecionados, livros_usados.head(3 - len(livros_selecionados))])
 
         # Atualizar a coluna "livros usados" no DataFrame
         df.loc[df['livros'].isin(livros_selecionados['livros']), 'livros usados'] = "Sim"
@@ -148,10 +150,7 @@ def main():
 
     if metodo_selecao == "Selecionar do acervo":
         # Ler e atualizar o Excel
-        livros_usados = pd.read_excel(caminho_excel, sheet_name='controle')
-        livros_usados = livros_usados[livros_usados['livros usados'] == "Sim"]['livros'].tolist()
-
-        livros_selecionados, df = ler_e_atualizar_excel(caminho_excel, livros_usados)
+        livros_selecionados, df = ler_e_atualizar_excel(caminho_excel)
 
         if livros_selecionados is None:
             return
@@ -288,10 +287,14 @@ def main():
                     mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 )
 
-            # Limpar as imagens baixadas
+            # Limpar as imagens baixadas imediatamente após o uso
             for caminho in caminhos_imagens:
                 if os.path.exists(caminho):
-                    os.remove(caminho)
+                    try:
+                        os.remove(caminho)
+                        st.success(f"Imagem {caminho} removida com sucesso.")
+                    except Exception as e:
+                        st.error(f"Erro ao remover a imagem {caminho}: {e}")
 
             st.success("Apresentação gerada com sucesso!")
 
