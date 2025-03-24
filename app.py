@@ -111,7 +111,7 @@ def ler_e_atualizar_excel(caminho_excel):
         return None, None
 
 def main():
-    st.title("Gerador de Apresentações de Livros")
+    st.title("Template de Livros")
 
     # Caminho do arquivo Excel
     caminho_excel = "livros.xlsx"  # Substitua pelo caminho do seu arquivo Excel
