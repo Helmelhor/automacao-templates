@@ -12,7 +12,7 @@ A aplicação utiliza a API do **Google Gemini** para gerar os resumos e a frase
 
 1. **Acesse o Link**:
    - A aplicação está disponível no Streamlit Community Cloud. Clique no link abaixo para acessar:
-     [Link da Aplicação](https://seu-link-streamlit.cloud)
+     [Link da Aplicação](https://automacao-templates-d84tnvyn58ewodczp7dapp5.streamlit.app/)
 
 2. **Preencha os Campos**:
    - Na página inicial, você verá campos para inserir:
