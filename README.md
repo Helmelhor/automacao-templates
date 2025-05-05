@@ -102,11 +102,5 @@ Se você deseja executar o projeto localmente, siga os passos abaixo:
 Este projeto foi desenvolvido especificamente para a **ACLF Empreendimentos** com o objetivo de automatizar a criação de apresentações de livros, facilitando a geração de conteúdo visual e textual de forma rápida e eficiente.
 
 ### Desenvolvedor
-- **Nome**: [Seu Nome]
-- **Contato**: [Seu Email ou LinkedIn]
-
----
-
-## Licença
-
-Este projeto está licenciado sob a licença MIT. Consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
+- **Nome**: Helmer Barcelos
+- **Contato**: hfelixmsouza@gmail.com
